@@ -1,0 +1,38 @@
+{-# STDLIB_VERSION 3 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+let myToken = base58'4FB91hd6i1RAwfJK9iainbKzvwzsMmeSgmRxScWA5v5Y'
+
+@Callable(i)
+func deposit() = {
+    let pmt = extract(i.payment)
+    if (pmt.assetId != myToken) then throw("myToken only at the moment")
+    else {
+        let currentKey = toBase58String(i.caller.bytes)
+        let currentAmount = match getInteger(this, currentKey) {
+            case a:Int => a
+            case _ => 0
+        }
+        let newAmount = currentAmount + pmt.amount
+        WriteSet([DataEntry(currentKey,newAmount)])
+    }
+}
+
+@Callable(i)
+func withdraw(amount: Int) = {
+        let currentKey = toBase58String(i.caller.bytes)
+        let currentAmount = match getInteger(this, currentKey) {
+            case a:Int => a
+            case _ => 0
+        }
+        let newAmount = currentAmount - amount
+    if (amount < 0)
+            then throw("Can't withdraw negative amount")
+    else if (newAmount < 0)
+            then throw("Not enough balance")
+            else ScriptResult(
+                    WriteSet([DataEntry(currentKey, newAmount)]),
+                    TransferSet([ScriptTransfer(i.caller, amount, myToken)])
+            )
+}
